@@ -1,0 +1,93 @@
+%{
+#include <stdio.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include "node.h"
+#include "tabid.h"
+#include "postfix.h"
+#include "y.tab.h"
+
+extern FILE *outfp;
+char *dupstr(const char *s);
+
+static long brklbl[20], brkcnt; /* break labels */
+
+static char *mkfunc(char *s) {
+  static char buf[80];
+  strcpy(buf, "_");
+  strcat(buf, s);
+  return buf;
+}
+
+static char *extrns[100];
+static int extcnt;
+%}
+
+%term END=';' PAUSE=',' BLOCK='{' OPEN = '('
+%include "y.tab.h"
+
+%%
+finit: OPEN(blocop, params)   1 { }
+%! finit: OPEN(blocop, NIL)      1 { }
+
+params: param                 0 { }
+params: PAUSE(params, param)  1 { }
+
+bloco: BLOCK(list, decls)     1 { }
+%! bloco: END(list, end)         1 { }
+
+decls: NIL
+decls: END(decls, param)      1 { }
+
+blocop: NIL                   0 { }
+blocop: bloco                 0 { }
+
+param: PARAM(INTEGER, ID)     1 { }
+param: PARAM(STRING, ID)      1 { }
+param: PARAM(NUMBER, ID)      1 { }
+
+base: expr                    0 { }
+
+list: base                    0 { }
+list: END(list, base)         1 { }
+
+args: NIL
+args: PAUSE(NIL, expr)        1 { }
+
+expr: INT                     0 { }
+expr: STR                     0 { }
+
+expr: ATR(ID, expr)           1 { }
+expr: CALL(ID, args)          1 { }
+
+%%
+
+extern void yyerror(const char*);
+extern char **yynames;
+extern int trace;
+
+void externs()
+{
+  int i;
+
+  for (i = 0; i < extcnt; i++)
+    if (extrns[i])
+      fprintf(outfp, pfEXTRN, extrns[i]);
+}
+
+void initfunc(char *name, int enter, Node *finit)
+{
+  int i;
+  extern int errors, trace;
+  extern char **yynames;
+  if (errors) return;
+  if (trace) printNode(finit, 0, yynames);
+  fflush(stdout);
+  fprintf(outfp, pfTEXT pfALIGN pfGLOBL pfLABEL pfENTER, mkfunc(name), pfFUNC, mkfunc(name), enter * (pfWORD/4));
+  yyselect(finit);
+  fprintf(outfp, pfLEAVE pfRET); /* just in case ... */
+  freeNode(finit);
+  for (i = 0; i < extcnt; i++)
+    if (extrns[i] && strcmp(extrns[i], mkfunc(name)) == 0) extrns[i] = 0;
+}
