@@ -60,8 +60,8 @@ file	:
 			| file public CONST tipo ID ';'		{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, 0); }
 			| file public tipo ID init				{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, $5); }
 			| file public CONST tipo ID init	{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, $6); }
-			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -fpar[0], RIGHT_CHILD($6));}
-			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -fpar[0], RIGHT_CHILD($6));}
+			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -fpar[0], LEFT_CHILD($6));}
+			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -fpar[0], LEFT_CHILD($6));}
 			;
 
 public	:           { $$ = 0; }
@@ -90,7 +90,7 @@ finit   : '(' params ')' blocop { $$ = binNode('(', $4, $2); }
 				| '(' ')' blocop        { $$ = binNode('(', $3, 0); }
 				;
 
-blocop  : ';'   			{ $$ = 0; }
+blocop  : ';'   			{ $$ = nilNode(NIL); }
         | bloco ';'   { $$ = $1; }
         ;
 
@@ -101,7 +101,7 @@ params	: param
 bloco	: '{' { IDpush(); } decls list end '}'    { $$ = binNode('{', $5 ? binNode(';', $4, $5) : $4, $3); IDpop(); }
 			;
 
-decls	:                       { $$ = 0; }
+decls	:                       { $$ = nilNode(NIL); }
 			| decls param ';'       { $$ = binNode(';', $1, $2); }
 			;
 
@@ -226,7 +226,7 @@ void enter(int pub, int typ, char *name) {
 	if (IDfind(name, (long*)IDtest) < 20)
 		IDnew(typ+20, name, (long)fpar);
 	IDpush();
-	if (typ != 4) IDnew(typ, name, 0);
+	if (typ != 4) IDnew(typ, name, -4);
 }
 
 int checkargs(char *name, Node *args) {

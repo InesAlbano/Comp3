@@ -28,20 +28,18 @@ static int extcnt;
 %include "y.tab.h"
 
 %%
-finit: OPEN(blocop, params)   1 { }
-%! finit: OPEN(blocop, NIL)      1 { }
 
-params: param                 0 { }
-params: PAUSE(params, param)  1 { }
+blocop: NIL                   0 { }
+blocop: bloco                 0 { }
+
+%! params: param                 0 { }
+%! params: PAUSE(params, param)  1 { }
 
 bloco: BLOCK(list, decls)     1 { }
 %! bloco: END(list, end)         1 { }
 
 decls: NIL
 decls: END(decls, param)      1 { }
-
-blocop: NIL                   0 { }
-blocop: bloco                 0 { }
 
 param: PARAM(INTEGER, ID)     1 { }
 param: PARAM(STRING, ID)      1 { }
@@ -53,12 +51,19 @@ list: base                    0 { }
 list: END(list, base)         1 { }
 
 args: NIL
-args: PAUSE(NIL, expr)        1 { }
+args: PAUSE(args, expr)        1 { }
+
+lv: LOCAL                     1 { }
+lv: ID                        1 { }
+
 
 expr: INT                     0 { }
 expr: STR                     0 { }
 
+assign: expr                  1 { }
+expr: ATR(assign, lv)         1 { }
 expr: ATR(ID, expr)           1 { }
+expr: ATR(LOCAL, expr)        1 { }
 expr: CALL(ID, args)          1 { }
 
 %%
