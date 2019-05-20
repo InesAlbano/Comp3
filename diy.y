@@ -19,7 +19,7 @@ static int ncicl;
 static char *fpar;
 
 char *mklbl(long);
-void initfunc(char*,int,Node*);
+void initfunc(char*,int,Node*), externs();
 %}
 
 %union {
@@ -54,14 +54,17 @@ void initfunc(char*,int,Node*);
 
 %token LOCAL POSINC POSDEC PTR CALL START PARAM NIL
 %%
+files : file {externs();}
+		;
+
 file	:
 			| file error ';'
 			| file public tipo ID ';'					{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, 0); }
 			| file public CONST tipo ID ';'		{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, 0); }
 			| file public tipo ID init				{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, $5); }
 			| file public CONST tipo ID init	{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, $6); }
-			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -fpar[0], LEFT_CHILD($6));}
-			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -fpar[0], LEFT_CHILD($6));}
+			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, 4, LEFT_CHILD($6));}
+			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, 4, LEFT_CHILD($6));}
 			;
 
 public	:           { $$ = 0; }
@@ -87,7 +90,7 @@ init	: ATR ID ';'				{ $$ = strNode(ID, $2); $$->info = IDfind($2, 0) + 10; }
       ;
 
 finit   : '(' params ')' blocop { $$ = binNode('(', $4, $2); }
-				| '(' ')' blocop        { $$ = binNode('(', $3, 0); }
+				| '(' ')' blocop        { $$ = binNode('(', $3, nilNode(NIL)); }
 				;
 
 blocop  : ';'   			{ $$ = nilNode(NIL); }
@@ -143,7 +146,7 @@ intp	:       				{ $$ = 1; }
 			| INT
 			;
 
-list	: base
+list	: base					{ $$ = binNode(';', nilNode(NIL), $1); }
 			| list base     { $$ = binNode(';', $1, $2); }
 			;
 
@@ -220,6 +223,7 @@ void declare(int pub, int cnst, Node *type, char *name, Node *value)
   if (type->value.i != typ)
     yyerror("wrong types in initialization");
 }
+
 void enter(int pub, int typ, char *name) {
 	fpar = malloc(32); /* 31 arguments, at most */
 	fpar[0] = 0; /* argument count */

@@ -3,7 +3,7 @@ section .bss
 
 section .text
 	global _prints, _readb, _exit, _start
-	extern _env, _strlen, _main
+	extern _env, _strlen, _entry
 
 _prints:
 	push	dword [esp+4]		; pushd 'prints' first argument
@@ -33,7 +33,7 @@ _readb:
 	pop	ebx
 	ret
 
-_start:	
+_start:
 	mov	[$_env], esp
 	mov	eax, [esp]	; argc
 	lea	ebx, [esp+4]	; argv
@@ -49,7 +49,7 @@ _start:
 	or	word [buf2], 0x0C00
 	fldcw	word [buf2]
 ; start program
-	call	_main
+	call	_entry
 	push	eax
 	call	_exit
 
