@@ -20,6 +20,9 @@ static char *fpar;
 
 char *mklbl(long);
 void initfunc(char*,int,Node*), externs();
+
+int localPos;
+
 %}
 
 %union {
@@ -54,8 +57,8 @@ void initfunc(char*,int,Node*), externs();
 
 %token LOCAL POSINC POSDEC PTR CALL START PARAM NIL
 %%
-files : file {externs();}
-		;
+files : file 				{externs();}
+			;
 
 file	:
 			| file error ';'
@@ -63,8 +66,8 @@ file	:
 			| file public CONST tipo ID ';'		{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, 0); }
 			| file public tipo ID init				{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, $5); }
 			| file public CONST tipo ID init	{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, $6); }
-			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, 4, LEFT_CHILD($6));}
-			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, 4, LEFT_CHILD($6));}
+			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6));}
+			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6));}
 			;
 
 public	:           { $$ = 0; }
@@ -109,8 +112,18 @@ decls	:                       { $$ = nilNode(NIL); }
 			;
 
 param	: tipo ID 							{ $$ = binNode(PARAM, $1, strNode(ID, $2));
-                  							IDnew($1->value.i, $2, 0);
-                  							if (IDlevel() == 1) fpar[++fpar[0]] = $1->value.i;
+                  							if (IDlevel() == 1) {
+																	fpar[++fpar[0]] = $1->value.i;
+																	IDnew($1->value.i, $2, 0);
+																} else if (IDlevel() == 2) {
+																	if ($1->attrib == NUMBER){
+																		IDnew($1->value.i, $2, localPos);
+																		localPos -= 8;
+																	} else {
+																		IDnew($1->value.i, $2, localPos);
+																		localPos -= 4;
+																	}
+																}
                 							}
 			;
 
@@ -225,12 +238,17 @@ void declare(int pub, int cnst, Node *type, char *name, Node *value)
 }
 
 void enter(int pub, int typ, char *name) {
+	localPos = -4;
 	fpar = malloc(32); /* 31 arguments, at most */
 	fpar[0] = 0; /* argument count */
 	if (IDfind(name, (long*)IDtest) < 20)
 		IDnew(typ+20, name, (long)fpar);
 	IDpush();
-	if (typ != 4) IDnew(typ, name, -4);
+	if (typ != 4){
+		IDnew(typ, name, -4);
+		if (typ == NUMBER) localPos-=8;
+		else localPos-=4;
+	}
 }
 
 int checkargs(char *name, Node *args) {

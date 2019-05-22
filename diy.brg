@@ -37,22 +37,19 @@ static char *extrns[100];
 static int extcnt;
 %}
 
-%term END=';' PAUSE=',' BLOCK='{' OPEN = '(' ALLOC = '#'
+%term END = ';' PAUSE = ',' BLOCK = '{' OPEN = '('
+%term ALLOC = '#' FACT = '!' ADD = '+' SUB = '-' MUL = '*' DIV = '/' MOD = '%'
+%term LT = '<' GT = '>' EQ = '=' AND = '&' OR = '|'
 %include "y.tab.h"
 
 %%
-
 blocop: NIL                   0 { }
 blocop: bloco                 0 { }
 
-%! params: param                 0 { }
-%! params: PAUSE(params, param)  1 { }
-
 bloco: BLOCK(list, decls)     1 { }
-%! bloco: END(list, end)         1 { }
 
-decls: NIL
-decls: END(decls, base)
+decls: NIL                    0 { }
+decls: END(decls, base)       1 { }
 decls: END(decls, param)      1 { }
 
 param: PARAM(INTEGER, ID)     1 { }
@@ -69,18 +66,42 @@ list: END(list, base)         1 { }
 args: NIL                     0 {p->place = 0;}
 args: PAUSE(args, expr)       1 {p->place =  ((LEFT_CHILD(p)->place) + 1);  }
 
-lv: LOCAL                     1 { fprintf(outfp, pfLOCAL, p->value.i * (pfWORD/4)); }
-lv: ID                        1 { fprintf(outfp, pfADDR, p->value.s); }
+lv: LOCAL                     1 {fprintf(outfp, pfLOCAL, p->value.i * (pfWORD/4)); }
+lv: ID                        1 {fprintf(outfp, pfADDR, p->value.s); }
 
 expr: INT                     0 {fprintf(outfp, pfIMM, p->value.i);}
 expr: STR                     0 {lbl++; fprintf(outfp, pfRODATA pfALIGN pfLABEL, mklbl(lbl)); outstr(p->value.s); fprintf(outfp, pfTEXT pfADDR, mklbl(lbl));}
-
+expr: REAL
+expr: lv
 assign: expr                  1 {fprintf(outfp, pfDUP);}
+expr: CALL(ID, args)          1 {fprintf(outfp, pfCALL, mkfunc(LEFT_CHILD(p)->value.s)); if (RIGHT_CHILD(p)->place) fprintf(outfp, pfTRASH, (int)(pfWORD*(RIGHT_CHILD(p)->place)));}
 expr: ATR(assign, lv)         1 {fprintf(outfp, pfSTORE);}
 expr: ATR(expr, ID)           1 {fprintf(outfp, pfDUP pfADDRA, RIGHT_CHILD(p)->value.s);}
 expr: ATR(expr, LOCAL)        1 {fprintf(outfp, pfDUP pfLOCA, RIGHT_CHILD(p)->value.i * (pfWORD/4));}
-expr: CALL(ID, args)          1 {fprintf(outfp, pfCALL, mkfunc(LEFT_CHILD(p)->value.s)); if (RIGHT_CHILD(p)->place) fprintf(outfp, pfTRASH, (int)(pfWORD*(RIGHT_CHILD(p)->place)));}
-
+expr: PTR(lv)         1 { }
+expr: UMINUS(expr)    1 {fprintf(outfp, pfNEG);}
+expr: NOT(expr)       1 {fprintf(outfp, pfIMM pfEQ, 0);}
+expr: REF(expr)       1 { }
+expr: FACT(expr)      1 { }
+expr: INCR(INT, lv)   1 {fprintf(outfp, pfINCR, LEFT_CHILD(p)->value.i);}
+expr: DECR(INT, lv)   1 {fprintf(outfp, pfDECR, LEFT_CHILD(p)->value.i);}
+expr: POSINC(lv, INT) 1 {fprintf(outfp, pfINCR, RIGHT_CHILD(p)->value.i);}
+expr: POSDEC(lv, INT) 1 {fprintf(outfp, pfDECR, RIGHT_CHILD(p)->value.i);}
+expr:	ADD(expr, expr)	1 {fprintf(outfp, pfADD);}
+expr:	SUB(expr, expr)	1 {fprintf(outfp, pfSUB);}
+expr:	MUL(expr, expr)	1 {fprintf(outfp, pfMUL);}
+expr:	DIV(expr, expr)	1 {fprintf(outfp, pfDIV);}
+expr:	MOD(expr, expr)	1 {fprintf(outfp, pfMOD);}
+expr:	LT(expr, expr)	1 {fprintf(outfp, pfLT);}
+expr:	GT(expr, expr)	1 {fprintf(outfp, pfGT);}
+expr:	GE(expr, expr)	1 {fprintf(outfp, pfGE);}
+expr:	LE(expr, expr)	1 {fprintf(outfp, pfLE);}
+expr: NE(expr, expr)  1 {fprintf(outfp, pfNE);}
+expr: EQ(expr, expr)  1 {fprintf(outfp, pfEQ);}
+expr: AND(and, expr)  1 {fprintf(outfp, pfLABEL, mklbl(LEFT_CHILD(p)->place));}
+and: expr             1 { }
+expr: OR(or, expr)    1 { }
+or: expr              1 { }
 %%
 
 extern void yyerror(const char*);
