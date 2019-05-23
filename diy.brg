@@ -78,30 +78,30 @@ expr: CALL(ID, args)          1 {fprintf(outfp, pfCALL, mkfunc(LEFT_CHILD(p)->va
 expr: ATR(assign, lv)         1 {fprintf(outfp, pfSTORE);}
 expr: ATR(expr, ID)           1 {fprintf(outfp, pfDUP pfADDRA, RIGHT_CHILD(p)->value.s);}
 expr: ATR(expr, LOCAL)        1 {fprintf(outfp, pfDUP pfLOCA, RIGHT_CHILD(p)->value.i * (pfWORD/4));}
-expr: PTR(lv)         1 { }
-expr: UMINUS(expr)    1 {fprintf(outfp, pfNEG);}
-expr: NOT(expr)       1 {fprintf(outfp, pfIMM pfEQ, 0);}
-expr: REF(expr)       1 { }
-expr: FACT(expr)      1 { }
-expr: INCR(INT, lv)   1 {fprintf(outfp, pfINCR, LEFT_CHILD(p)->value.i);}
-expr: DECR(INT, lv)   1 {fprintf(outfp, pfDECR, LEFT_CHILD(p)->value.i);}
-expr: POSINC(lv, INT) 1 {fprintf(outfp, pfINCR, RIGHT_CHILD(p)->value.i);}
-expr: POSDEC(lv, INT) 1 {fprintf(outfp, pfDECR, RIGHT_CHILD(p)->value.i);}
-expr:	ADD(expr, expr)	1 {fprintf(outfp, pfADD);}
-expr:	SUB(expr, expr)	1 {fprintf(outfp, pfSUB);}
-expr:	MUL(expr, expr)	1 {fprintf(outfp, pfMUL);}
-expr:	DIV(expr, expr)	1 {fprintf(outfp, pfDIV);}
-expr:	MOD(expr, expr)	1 {fprintf(outfp, pfMOD);}
-expr:	LT(expr, expr)	1 {fprintf(outfp, pfLT);}
-expr:	GT(expr, expr)	1 {fprintf(outfp, pfGT);}
-expr:	GE(expr, expr)	1 {fprintf(outfp, pfGE);}
-expr:	LE(expr, expr)	1 {fprintf(outfp, pfLE);}
-expr: NE(expr, expr)  1 {fprintf(outfp, pfNE);}
-expr: EQ(expr, expr)  1 {fprintf(outfp, pfEQ);}
-expr: AND(and, expr)  1 {fprintf(outfp, pfLABEL, mklbl(LEFT_CHILD(p)->place));}
-and: expr             1 { }
-expr: OR(or, expr)    1 { }
-or: expr              1 { }
+expr: PTR(lv)                 1 { }
+expr: UMINUS(expr)            1 {fprintf(outfp, pfNEG);}
+expr: NOT(expr)               1 {fprintf(outfp, pfIMM pfEQ, 0);}
+expr: REF(expr)               1 { }
+expr: FACT(expr)              1 { }
+expr: INCR(INT, lv)           1 {fprintf(outfp, pfINCR, LEFT_CHILD(p)->value.i);}
+expr: DECR(INT, lv)           1 {fprintf(outfp, pfDECR, LEFT_CHILD(p)->value.i);}
+expr: POSINC(lv, INT)         1 {fprintf(outfp, pfINCR, RIGHT_CHILD(p)->value.i);}
+expr: POSDEC(lv, INT)         1 {fprintf(outfp, pfDECR, RIGHT_CHILD(p)->value.i);}
+expr:	ADD(expr, expr)	        1 {fprintf(outfp, pfADD);}
+expr:	SUB(expr, expr)	        1 {fprintf(outfp, pfSUB);}
+expr:	MUL(expr, expr)	        1 {fprintf(outfp, pfMUL);}
+expr:	DIV(expr, expr)	        1 {fprintf(outfp, pfDIV);}
+expr:	MOD(expr, expr)	        1 {fprintf(outfp, pfMOD);}
+expr:	LT(expr, expr)	        1 {fprintf(outfp, pfLT);}
+expr:	GT(expr, expr)	        1 {fprintf(outfp, pfGT);}
+expr:	GE(expr, expr)	        1 {fprintf(outfp, pfGE);}
+expr:	LE(expr, expr)	        1 {fprintf(outfp, pfLE);}
+expr: NE(expr, expr)          1 {fprintf(outfp, pfNE);}
+expr: EQ(expr, expr)          1 {fprintf(outfp, pfEQ);}
+expr: AND(and, expr)          1 {fprintf(outfp, pfLABEL, mklbl(LEFT_CHILD(p)->place));}
+and: expr                     1 { }
+expr: OR(or, expr)            1 { }
+or: expr                      1 { }
 %%
 
 extern void yyerror(const char*);
@@ -132,10 +132,27 @@ void initfunc(char *name, int enter, Node *finit, int tipo)
   fprintf(outfp, pfTEXT pfALIGN pfGLOBL pfLABEL pfENTER, mkfunc(name), pfFUNC, mkfunc(name), enter * (pfWORD/4));
   yyselect(finit);
   if (tipo)
-    fprintf(outfp, pfLOCV pfPOP pfLEAVE pfRET, -4); /* just in case ...  */
+    fprintf(outfp, pfLOCV pfPOP pfLEAVE pfRET, -4); /* has return type */
   else
-    fprintf(outfp, pfPOP pfLEAVE pfRET); /* just in case ...  */
+    fprintf(outfp, pfPOP pfLEAVE pfRET); /* is void  */
   freeNode(finit);
-  for (i = 0; i < extcnt; i++)
-    if (extrns[i] && strcmp(extrns[i], mkfunc(name)) == 0) extrns[i] = 0;
+
+}
+
+void variable(char *name, int isConst, Node *type, Node *init) {
+  if (isConst)
+    fprintf(outfp, pfRODATA pfALIGN pfLABEL pfGLOBL, name, name, pfOBJ);
+  else
+    fprintf(outfp, pfDATA pfALIGN pfLABEL pfGLOBL, name, name , pfOBJ);
+
+  if(init == NULL){
+    if (type->attrib == INTEGER){
+      fprintf(outfp, pfINTEGER, 0);
+    }
+  } else {
+    if (type->attrib == INTEGER){
+      fprintf(outfp, pfINTEGER, init->value.i);
+    }
+  }
+
 }

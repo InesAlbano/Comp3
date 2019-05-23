@@ -19,9 +19,10 @@ static int ncicl;
 static char *fpar;
 
 char *mklbl(long);
-void initfunc(char*,int,Node*), externs();
+void initfunc(char*,int,Node*,int), variable(char*,int,Node*,Node*), externs();
 
 int localPos;
+int globalPos = 8;
 
 %}
 
@@ -62,12 +63,12 @@ files : file 				{externs();}
 
 file	:
 			| file error ';'
-			| file public tipo ID ';'					{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, 0); }
-			| file public CONST tipo ID ';'		{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, 0); }
-			| file public tipo ID init				{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, $5); }
-			| file public CONST tipo ID init	{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, $6); }
-			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6));}
-			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6));}
+			| file public tipo ID ';'					{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, 0); variable((char*)$4, 0, $3, NULL);}
+			| file public CONST tipo ID ';'		{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, 0); variable((char*)$4, 1, $4, NULL);}
+			| file public tipo ID init				{ IDnew($3->value.i, $4, 0); declare($2, 0, $3, $4, $5); variable((char*)$4, 0, $3, $5);}
+			| file public CONST tipo ID init	{ IDnew($4->value.i+5, $5, 0); declare($2, 1, $4, $5, $6); variable((char*)$5, 1, $4, $6);}
+			| file public tipo ID 						{ enter($2, $3->value.i, $4); } finit { function($2, $3, $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6), 1);}
+			| file public VOID ID 						{ enter($2, 4, $4); } finit { function($2, intNode(VOID, 4), $4, $6); initfunc($4, -localPos-4, LEFT_CHILD($6), 0);}
 			;
 
 public	:           { $$ = 0; }
