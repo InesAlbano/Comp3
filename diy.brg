@@ -70,8 +70,8 @@ lv: LOCAL                     1 {fprintf(outfp, pfLOCAL, p->value.i * (pfWORD/4)
 lv: ID                        1 {fprintf(outfp, pfADDR, p->value.s); }
 
 expr: INT                     0 {fprintf(outfp, pfIMM, p->value.i);}
-expr: STR                     0 {lbl++; fprintf(outfp, pfRODATA pfALIGN pfLABEL, mklbl(lbl)); outstr(p->value.s); fprintf(outfp, pfTEXT pfADDR, mklbl(lbl));}
-expr: REAL
+expr: STR                     0 {fprintf(outfp, pfRODATA pfALIGN pfLABEL, mklbl(++lbl)); outstr(p->value.s); fprintf(outfp, pfTEXT pfADDR, mklbl(lbl));}
+expr: REAL                    0 {fprintf(outfp, pfRODATA pfALIGN pfLABEL pfDOUBLE pfTEXT pfADDR pfLOAD2, mklbl(++lbl), p->value.r, mklbl(lbl));}
 expr: lv
 assign: expr                  1 {fprintf(outfp, pfDUP);}
 expr: CALL(ID, args)          1 {fprintf(outfp, pfCALL, mkfunc(LEFT_CHILD(p)->value.s)); if (RIGHT_CHILD(p)->place) fprintf(outfp, pfTRASH, (int)(pfWORD*(RIGHT_CHILD(p)->place)));}
@@ -146,13 +146,20 @@ void variable(char *name, int isConst, Node *type, Node *init) {
     fprintf(outfp, pfDATA pfALIGN pfLABEL pfGLOBL, name, name , pfOBJ);
 
   if(init == NULL){
-    if (type->attrib == INTEGER){
+    if (type->attrib == INTEGER)
       fprintf(outfp, pfINTEGER, 0);
-    }
   } else {
-    if (type->attrib == INTEGER){
+    if (init->info == 1) {                           /* integer */
       fprintf(outfp, pfINTEGER, init->value.i);
+    } else if (init->info > 10) {                    /* ID */
+      fprintf(outfp, pfID, init->value.s);
+    } else if (init->info==2 || init->info==(2+5)) { /* string */
+			fprintf(outfp, pfRODATA pfALIGN pfLABEL, mklbl(++lbl));
+			outstr(init->value.s);
+			fprintf(outfp, pfDATA pfID, mklbl(lbl));
+    } else {
+      char *l = mklbl(++lbl);
+      fprintf(outfp, pfRODATA pfALIGN pfLABEL pfDOUBLE pfTEXT pfADDR pfLOAD2, l, init->value.r, l);
     }
   }
-
 }
