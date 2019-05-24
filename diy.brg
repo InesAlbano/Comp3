@@ -30,6 +30,7 @@ static void outstr(char *s) {
   fprintf(outfp, pfCHAR, 0);
 }
 
+static long brklbl[20], brkcnt; /* break labels */
 static char *extrns[100];
 static int extcnt;
 %}
@@ -54,6 +55,9 @@ param: PARAM(STRING, ID)      1
 param: PARAM(NUMBER, ID)      1
 
 base: VOID                    0
+base:	WHILE(do,expr)	        1 {fprintf(outfp, pfJZ, mklbl(lbl)); }
+do:	  DO(begin,base)          1
+begin: START		              1 { p->place = ++lbl; fprintf(outfp, pfLABEL, mklbl(lbl)); }
 base:	ELSE(if, base)	        1 { fprintf(outfp, pfLABEL, mklbl(LEFT_CHILD(p)->place)); }
 if:	  IF(cond, base)          1 { p->place = ++lbl; fprintf(outfp, pfJMP pfLABEL, mklbl(p->place), mklbl(LEFT_CHILD(p)->place)); }
 base: IF(cond, base)          1 {fprintf(outfp, pfLABEL, mklbl(LEFT_CHILD(p)->place));}
